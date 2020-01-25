@@ -127,7 +127,6 @@
     trivial_casts,
     trivial_numeric_casts,
     unconditional_recursion,
-    unions_with_drop_fields,
     unsafe_code,
     unused,
     unused_allocation,
