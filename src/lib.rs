@@ -152,6 +152,7 @@ extern crate fallible_iterator;
 extern crate ipnet;
 #[macro_use]
 extern crate log;
+extern crate futures;
 extern crate osauth;
 extern crate reqwest;
 extern crate serde;

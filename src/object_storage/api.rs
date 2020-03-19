@@ -14,12 +14,13 @@
 
 //! Foundation bits exposing the object storage API.
 
-use std::io;
-
+use futures::future::Future;
 use osauth::request::NO_PATH;
 use osauth::services::OBJECT_STORAGE;
 use osauth::sync::{SyncBody, SyncStream};
 use reqwest::{Method, StatusCode};
+use std::io;
+use std::str::FromStr;
 
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -91,6 +92,36 @@ where
     Ok(())
 }
 
+/// Copy an object.
+pub fn copy_object<C, O, N>(
+    session: &Session,
+    container: C,
+    object: O,
+    new_object_name: N,
+) -> Result<()>
+where
+    C: AsRef<str>,
+    O: AsRef<str>,
+    N: AsRef<str>,
+{
+    let c_id = container.as_ref();
+    let o_id = object.as_ref();
+    let new_object_name = new_object_name.as_ref();
+    debug!("Copying object {} in container {}", o_id, c_id);
+    let req_builder = session
+        .request(
+            OBJECT_STORAGE,
+            Method::from_str("COPY").unwrap(),
+            &[c_id, o_id],
+            None,
+        )?
+        .header("Destination", new_object_name);
+
+    let _ = session.send_checked(req_builder)?;
+    debug!("Successfully copied object {} in container {}", o_id, c_id);
+    Ok(())
+}
+
 /// Get container metadata.
 pub fn get_container<C>(session: &Session, container: C) -> Result<Container>
 where
@@ -154,6 +185,14 @@ where
     query.push_str("format", "json");
     let id = container.as_ref();
     trace!("Listing objects in container {} with {:?}", id, query);
+    let mut res = session.get_query(OBJECT_STORAGE, &[id], query.clone(), None)?;
+    let _ = res
+        .text()
+        .and_then(|res| {
+            println!("-------- {:?}", res);
+            Ok(res)
+        })
+        .wait();
     let root: Vec<Object> = session.get_json_query(OBJECT_STORAGE, &[id], query, None)?;
     trace!("Received objects: {:?}", root);
     Ok(root)

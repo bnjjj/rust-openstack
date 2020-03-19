@@ -34,9 +34,12 @@ pub struct Container {
 // clouds use different formats (UTC vs naive) or skip it completely (for containers).
 #[derive(Debug, Clone, Deserialize)]
 pub struct Object {
+    #[serde(default)]
     pub bytes: u64,
     pub content_type: Option<String>,
+    #[serde(default)]
     pub name: String,
+    pub subdir: Option<String>,
 }
 
 impl Container {
@@ -82,6 +85,7 @@ impl Object {
             bytes: size,
             content_type: ct,
             name: name.into(),
+            subdir: None,
         })
     }
 }

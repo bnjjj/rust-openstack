@@ -98,6 +98,17 @@ impl Object {
         api::download_object(&self.session, &self.c_name, &self.inner.name)
     }
 
+    /// Copy the object.
+    #[inline]
+    pub fn copy<T: AsRef<str>>(&self, new_name: T) -> Result<()> {
+        api::copy_object(
+            &self.session,
+            &self.c_name,
+            &self.inner.name,
+            new_name.as_ref(),
+        )
+    }
+
     transparent_property! {
         #[doc = "Total size of the object."]
         bytes: u64
@@ -117,6 +128,11 @@ impl Object {
     transparent_property! {
         #[doc = "Object name."]
         name: ref String
+    }
+
+    transparent_property! {
+        #[doc = "Object subdir name."]
+        subdir: ref Option<String>
     }
 }
 
@@ -153,6 +169,20 @@ impl ObjectQuery {
     pub fn with_limit(mut self, limit: usize) -> Self {
         self.can_paginate = false;
         self.query.push("limit", limit);
+        self
+    }
+
+    /// Add custom query to the request.
+    /// To find which name and value for request please check the official Openstack documentation https://docs.openstack.org/api-ref/object-store/index.html?expanded=show-container-details-and-list-objects-detail
+    ///
+    /// Using this disables automatic pagination.
+    pub fn with_custom_query<T, V>(mut self, name: T, value: V) -> Self
+    where
+        T: Into<String>,
+        V: ToString,
+    {
+        self.can_paginate = false;
+        self.query.push(name, value);
         self
     }
 
@@ -211,6 +241,7 @@ impl ResourceQuery for ObjectQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
+        println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>");
         Ok(api::list_objects(&self.session, &self.c_name, query)?
             .into_iter()
             .map(|item| Object {
